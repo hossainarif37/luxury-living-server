@@ -67,6 +67,12 @@ async function run() {
             const users = await userCollection.find({}).toArray();
             res.send(users);
         })
+        //* GET a user
+        app.get('/user', async (req, res) => {
+            const email = req.query.email;
+            const users = await userCollection.findOne({ email });
+            return res.send(users)
+        })
 
         //* UPDATE the user role
         app.patch('/users', verifyAdmin, async (req, res) => {
@@ -98,18 +104,17 @@ async function run() {
             res.send(services);
         })
 
-        //*GET a specific service
+        //*GET a specific service by dynamic route
         app.get('/services/:id', async (req, res) => {
-            const query = req.params.id;
-            const result = await serviceCollection.findOne({ _id: new ObjectId(query) });
+            const filter = req.params.id;
+            const result = await serviceCollection.findOne({ _id: new ObjectId(filter) });
             res.send(result);
         })
 
         //* UPDATE a specific service
-        app.put('/services', async (req, res) => {
+        app.patch('/services', async (req, res) => {
             const { id } = req.query;
             const filter = { _id: new ObjectId(id) };
-            console.log(id);
             const data = req.body;
             const updateDoc = {
                 $set: data
@@ -131,6 +136,10 @@ async function run() {
         //* POST a specific service to Cart
         app.post('/cart', async (req, res) => {
             const cartData = req.body;
+            const isCartExist = await cartCollection.findOne({ title: cartData.title, email: cartData.email })
+            if (isCartExist) {
+                return res.send({ message: 'Service already exist in your dashboard, please add to another service!' })
+            }
             const result = await cartCollection.insertOne(cartData);
             res.send(result);
         })
@@ -138,13 +147,26 @@ async function run() {
         //* GET specific user cart
         app.get('/cart', async (req, res) => {
             const filter = req.query;
-            console.log(filter);
             const cart = await cartCollection.find(filter).toArray();
             res.send(cart);
         })
+
+        //* GET a cart
+        app.get('/cart/:id', async (req, res) => {
+            const { id } = req.params;
+            const cart = await cartCollection.findOne({ _id: new ObjectId(id) });
+            res.send(cart);
+        })
+
+        //* DELETE a cart
+        app.delete('/cart', async (req, res) => {
+            const { id, email } = req.query;
+            const result = await cartCollection.deleteOne({ _id: new ObjectId(id), email });
+            res.send(result);
+        })
         //?-----------🛒 Cart Api End 🛒-----------*//
 
-        //?-----------🛒 Order Api Start 🛒-----------*//
+        //?----------- Order Api Start -----------*//
         //* POST a order
         app.post('/orders', async (req, res) => {
             const orderData = req.body;
@@ -166,14 +188,13 @@ async function run() {
             res.send(orders);
         })
 
-
-
-
-        //?-----------🛒 Order Api End 🛒-----------*//
+        //?----------- Order Api End -----------*//
 
 
         console.log("Database Connected");
-    } finally {
+    }
+
+    finally {
         // Ensures that the client will close when you finish/error
         // await client.close();
     }
