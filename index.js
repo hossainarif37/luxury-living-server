@@ -4,6 +4,9 @@ const cors = require('cors');
 require('dotenv').config()
 const port = process.env.PORT || 5000
 
+//* Stripe Secret key
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+
 app.use(express.json())
 app.use(cors())
 
@@ -70,12 +73,12 @@ async function run() {
         //* GET a user
         app.get('/user', async (req, res) => {
             const email = req.query.email;
-            const users = await userCollection.findOne({ email });
-            return res.send(users)
+            const user = await userCollection.findOne({ email });
+            return res.send(user)
         })
 
         //* UPDATE the user role
-        app.patch('/users', verifyAdmin, async (req, res) => {
+        app.patch('/users', async (req, res) => {
             const filter = req.query;
             const role = req.body.role;
             const updateDoc = {
@@ -160,13 +163,31 @@ async function run() {
 
         //* DELETE a cart
         app.delete('/cart', async (req, res) => {
-            const { id, email } = req.query;
-            const result = await cartCollection.deleteOne({ _id: new ObjectId(id), email });
+            const { id } = req.query;
+            const result = await cartCollection.deleteOne({ _id: new ObjectId(id) });
             res.send(result);
         })
         //?-----------🛒 Cart Api End 🛒-----------*//
 
         //?----------- Order Api Start -----------*//
+        //* Create Payment Intent
+        app.post('/create-payment-intent', async (req, res) => {
+            const { price } = req.body;
+            const amount = price * 100;
+
+
+            // Create a PaymentIntent with the order amount and currency
+            const paymentIntent = await stripe.paymentIntents.create({
+                amount: amount,
+                currency: "usd",
+                payment_method_types: ['card'],
+            })
+            res.send({
+                clientSecret: paymentIntent.client_secret
+            })
+        })
+
+
         //* POST a order
         app.post('/orders', async (req, res) => {
             const orderData = req.body;
@@ -179,6 +200,19 @@ async function run() {
             const filter = req.query;
             const orders = await orderCollection.find(filter).toArray();
             res.send(orders);
+
+        })
+
+        //* UPDATE Delivery Status of User Order
+        app.patch('/orders', async (req, res) => {
+            const id = req.query.id;
+            const deliveryStatus = req.body;
+            const filter = { _id: new ObjectId(id) };
+            const updateDoc = {
+                $set: deliveryStatus
+            }
+            const result = await orderCollection.updateOne(filter, updateDoc);
+            res.send(result);
 
         })
 
