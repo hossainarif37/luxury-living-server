@@ -66,10 +66,10 @@ async function run() {
         })
 
         //* GET all users
-        app.get('/users', async (req, res) => {
-            const users = await userCollection.find({}).toArray();
-            res.send(users);
-        })
+        // app.get('/users', async (req, res) => {
+        //     const users = await userCollection.find({}).toArray();
+        //     res.send(users);
+        // })
         //* GET a user
         app.get('/user', async (req, res) => {
             const email = req.query.email;
